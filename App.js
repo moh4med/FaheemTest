@@ -19,7 +19,8 @@ import {
   TouchableOpacity,
   Dimensions,
   TextInput,
-  Image
+  Image,
+  InteractionManager
 } from 'react-native';
 import ModalDropdown from 'react-native-modal-dropdown';
 import {
@@ -70,7 +71,7 @@ class App extends Component {
       keyWord: "",
       location_id: -1,
       tutors: [],
-      firstStep:true,
+      firstStep: true,
     }
   }
   componentDidMount() {
@@ -179,9 +180,8 @@ class App extends Component {
     )
   }
   Search = () => {
-    // this.view.bounce(800).then(endState => console.log(endState.finished ? 'bounce finished' : 'bounce cancelled'));
-   
-   
+
+
 
 
 
@@ -196,19 +196,39 @@ class App extends Component {
       alert("please choose course name");
       return;
     }
-    if(this.state.firstStep){
-      this.firstText.transitionTo({ left: Width }, 1000);
-      this.secondText.transitionTo({ right: Width }, 1000);
-      this.subjectview.transitionTo({ top: -Height, opacity: 0 }, 2000);
-      this.modalview.transitionTo({ top: Height * .05, left: Width * .05, width: Width * .32 }, 1000);
-      this.keywordview.transitionTo({ top: Height * .05, right: Width * .17, width: Width * .42, text: "asdf" }, 1000);
+    if (this.state.firstStep) {
+      let animetime = 1000
+      this.firstText.transitionTo({ left: Width }, animetime);
+      this.secondText.transitionTo({ right: Width }, animetime);
+      this.subjectview.transitionTo({ top: -Height, opacity: 0 }, animetime * 2);
+      this.modalview.transitionTo({ top: Height * .05, left: Width * .05, width: Width * .32 }, animetime);
+      this.keywordview.transitionTo({ top: Height * .05, right: Width * .17, width: Width * .42, }, animetime);
       this.searchbutton.transitionTo({
         top: Height * .05, right: Width * .05,
         width: Width * .12, borderRadius: 8, borderTopLeftRadius: 0,
         borderBottomLeftRadius: 0
-      }, 1000);
-      this.setState({firstStep:false})
-     }
+      }, animetime)
+      requestAnimationFrame(() => {
+        this.setState({ firstStep: false, isLoading: true }, () => {
+        })
+
+      });
+      setTimeout(() => {
+
+        requestAnimationFrame(() => {
+          this.getTutor()
+        });
+      }, animetime);
+
+     
+    } else {
+      this.getTutor()
+    }
+
+
+  }
+  getTutor = () => {
+    let { location_id, keyWord } = this.state
     this.setState({ isLoading: true }, () => {
 
       fetch("https://faheemapp.com/api-server/api/search/tutors", {
@@ -234,10 +254,10 @@ class App extends Component {
     })
   }
   render() {
-    let { isLoading, cities } = this.state;
+    let { isLoading, cities, firstStep } = this.state;
     return (
       <View style={{ backgroundColor: "white", flex: 1, alignItems: "center" }}>
-        <CustomHeader header={"Find a Tutor"} />
+        <CustomHeader header={firstStep ? "Find a Tutor" : "Search Result"} />
         <View style={{ flex: 1, width: Width, backgroundColor: "#fff", alignItems: "center" }}>
           <Animatable.Text
             ref={ref => this.firstText = ref}
@@ -270,7 +290,9 @@ class App extends Component {
                 justifyContent: "center",
                 padding: 6
               }}
-
+              dropdownStyle={{
+                width:firstStep?Width*.9:Width*.3
+              }}
               onSelect={(item, index) => {
                 this.setState({ location_id: cities[item].id })
               }}
@@ -304,6 +326,7 @@ class App extends Component {
             />
           </Animatable.View>
           <Animatable.View
+
             ref={ref => this.searchbutton = ref}
             style={{
               width: Width * .9,
@@ -328,104 +351,107 @@ class App extends Component {
                 alignItems: "center",
 
               }}>
-              {this.state.firstStep&&<Animatable.Text
+              {this.state.firstStep && <Animatable.Text
                 animation="pulse" easing="ease-out" iterationCount="infinite"
                 style={{ color: "#fff", fontSize: 16 }}>Search</Animatable.Text>}
 
-{!this.state.firstStep&&<Image 
-source={require('./search.png')}
-style={{width:12,height:12,borderRadius:6,tintColor:"#fff"}}/>}
+              {!this.state.firstStep && <Image
+                source={require('./search.png')}
+                style={{ width: 12, height: 12, borderRadius: 6, tintColor: "#fff" }} />}
             </TouchableOpacity>
           </Animatable.View>
 
-            {!this.state.firstStep&&<FlatList
+          <FlatList
 
-              data={this.state.tutors}
-              extraData={this.state}
-              showsVerticalScrollIndicator={false}
-              style={{ height: Height * .9, marginTop: Height * .2 }}
-              contentContainerStyle={{ width: Width, backgroundColor: "snow", alignItems: "center" }}
-              keyExtractor={(item, index) => "" + item.id}
-              renderItem={
-                ({ item, index }) => {
+            data={this.state.tutors}
+            extraData={this.state}
+            showsVerticalScrollIndicator={false}
+            style={{ height: Height * .9, marginTop: Height * .2, position: "absolute", zIndex: -1 }}
+            contentContainerStyle={{ width: Width, backgroundColor: "snow", alignItems: "center",paddingBottom:Height*.4 }}
+            keyExtractor={(item, index) => "" + item.id}
+            renderItem={
+              ({ item, index }) => {
 
-                  let x = ["slideInDown",
-                    "slideInUp",
-                    "slideInLeft",
-                    "slideInRight"]
-                  return (
-                    <Animatable.View
+                let x = ["slideInDown",
+                  "slideInUp",
+                  "slideInLeft",
+                  "slideInRight"]
+                return (
+                  <Animatable.View
 
-                      animation={x[index % 4]}
-                      useNativeDriver={true}
-                      duration={600}
-                      delay={0}
-                      style={{
-                        width: Width * .9,
-                        height: Height * .2,
-                        elevation: 5,
-                        borderRadius: 4,
-                        backgroundColor: "#fff",
-                        marginVertical: 10,
-                        paddingVertical: Height * .02,
-                        paddingHorizontal: Width * .03
-                      }}>
-                      <View style={{ flex: 4, backgroundColor: "#fff", flexDirection: "row" }}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: "#555", fontSize: 13 }}>  SR{item.price}</Text>
-                          <Text style={{ color: "#555", fontSize: 14 }}>per hour</Text>
-                        </View>
-                        <View style={{ flex: 3 }}>
-                          <Text style={{ color: "#555", fontSize: 20, fontWeight: "bold",textAlign:"right" }}>{item.username}</Text>
-                          <Text style={{textAlign:"right"}}>⭐</Text>
-                          <Text style={{ color: "#555", fontSize: 12,textAlign:"right" }}>qualification - {item.qualification} </Text>
-                        </View>
-                        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                          <Image
-                            style={{ width: Width * .14, height: Width * .14, borderRadius: Width * .07, borderWidth: StyleSheet.hairlineWidth, borderColor: "#555" }}
-                            source={{ uri: item.photo }}
-                          />
-                        </View>
+                    animation={x[index % 4]}
+                    useNativeDriver={true}
+                    duration={600}
+                    delay={0}
+                    style={{
+                      width: Width * .9,
+                      height: Height * .2,
+                      elevation: 5,
+                      borderRadius: 4,
+                      backgroundColor: "#fff",
+                      marginVertical: 10,
+                      paddingVertical: Height * .02,
+                      paddingHorizontal: Width * .03
+                    }}>
+                    <View style={{ flex: 4, backgroundColor: "#fff", flexDirection: "row" }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: "#555", fontSize: 13 }}>  SR{item.price}</Text>
+                        <Text style={{ color: "#555", fontSize: 14 }}>per hour</Text>
                       </View>
-                      <View style={{ flex: 2, backgroundColor: "#fff", alignItems: "flex-end" }}>
-                        <FlatList
-
-                          data={item.subjects}
-                          extraData={this.state}
-                          horizontal
-                          showsHorizontalScrollIndicator={false}
-                          style={{ height: Height * .9 }}
-                          contentContainerStyle={{ alignItems: "center" }}
-                          keyExtractor={(item, index) => "" + index}
-                          renderItem={
-                            ({ item, index }) => {
-
-                              return (
-
-                                <View style={{
-                                  width: Width * .19,
-                                  height: Height * .03,
-                                  marginRight: 4,
-                                  borderRadius: Width * .03,
-                                  justifyContent: "center", alignItems: "center",
-                                  backgroundColor: "orange"
-                                }}>
-                                  <Text style={{ color: "#fff" }}>{item.subject_name}</Text>
-                                </View>
-
-
-                              )
-                            }
-                          }
+                      <View style={{ flex: 3 }}>
+                        <Text style={{ color: "#555", fontSize: 20, fontWeight: "bold", textAlign: "right" }}>{item.username}</Text>
+                        <Text
+                        
+                        style={{ textAlign: "right" }}>⭐⭐</Text>
+                        <Text style={{ color: "#555", fontSize: 12, textAlign: "right" }}>qualification - {item.qualification} </Text>
+                      </View>
+                      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                        <Animatable.Image
+                          animation="pulse" easing="ease-out" iterationCount="infinite"
+                          style={{ width: Width * .14, height: Width * .14, borderRadius: Width * .07, borderWidth: StyleSheet.hairlineWidth, borderColor: "#555" }}
+                          source={{ uri: item.photo }}
                         />
                       </View>
-                    </Animatable.View>
+                    </View>
+                    <View style={{ flex: 2, backgroundColor: "#fff", alignItems: "flex-end" }}>
+                      <FlatList
+
+                        data={item.subjects}
+                        extraData={this.state}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ height: Height * .9 }}
+                        contentContainerStyle={{ alignItems: "center" }}
+                        keyExtractor={(item, index) => "" + index}
+                        renderItem={
+                          ({ item, index }) => {
+
+                            return (
+
+                              <View style={{
+                                width: Width * .19,
+                                height: Height * .03,
+                                marginRight: 4,
+                                borderRadius: Width * .03,
+                                justifyContent: "center", alignItems: "center",
+                                backgroundColor: "orange"
+                              }}>
+                                <Text style={{ color: "#fff" }}>{item.subject_name}</Text>
+                              </View>
 
 
-                  )
-                }
+                            )
+                          }
+                        }
+                      />
+                    </View>
+                  </Animatable.View>
+
+
+                )
               }
-            />}
+            }
+          />
 
         </View>
 
